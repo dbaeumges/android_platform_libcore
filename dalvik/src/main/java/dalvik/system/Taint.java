@@ -19,6 +19,9 @@
 
 package dalvik.system;
 
+import org.json.JSONException;
+import org.json.JSONStringer;
+
 /**
  * Provides a Taint interface for the Dalvik VM. This class is used for
  * implementing Taint Source and Sink functionality.
@@ -434,5 +437,155 @@ public final class Taint {
      *	    the file descriptor
      */
     native public static void logPeerFromFd(int fd);
+
+
+
+    public static void logNetworkSend(String theAction, int theTag, String theDestination, String theData)
+    {
+        String aLogStr = "";
+        String aTagStr = "0x" + Integer.toHexString(theTag);
+        String aStackTraceStr = getStackTrace();
+        try
+        {
+            aLogStr = new JSONStringer()
+              .array()
+                .object()
+                  .key("__NetworkSendLogEntry__")
+                  .value("true")
+                  .key("action")
+                  .value(theAction)
+                  .key("tag")
+                  .value(aTagStr)
+                  .key("destination")
+                  .value(theDestination)
+                  .key("data")
+                  .value(theData)
+                  .key("stackTraceStr")
+                  .value(aStackTraceStr)
+                .endObject()
+              .endArray()
+            .toString();
+        } 
+        catch (JSONException ex) 
+        {
+            log("JSON Exception thrown: " + ex.toString());
+            aLogStr = "[{\"__NetworkSendLogEntry__\" : \"true"
+                + "\", \"action\" : \"" + theAction
+                + "\", \"tag\": \"" + aTagStr 
+                + "\", \"destination\": \"" + theDestination 
+                + "\", \"data\": " + escapeJson(theData)
+                + ", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) + "\"}]";
+        }
+        log(aLogStr);
+    }
+
+    public static void logFileSystem(String theAction, int theTag, int theFileDescriptor, String theData)
+    {
+        Taint.logPathFromFd(theFileDescriptor); // Log file descriptor first
+
+        String aLogStr = "";
+        String aTagStr = "0x" + Integer.toHexString(theTag);
+        String aStackTraceStr = getStackTrace();
+
+        try
+        {
+            aLogStr = new JSONStringer()
+              .array()
+                .object()
+                  .key("__FileSystemLogEntry__")
+                  .value("true")
+                  .key("action")
+                  .value(theAction)
+                  .key("tag")
+                  .value(aTagStr)
+                  .key("fileDescriptor")
+                  .value(theFileDescriptor)
+                  .key("data")
+                  .value(theData)
+                  .key("stackTraceStr")
+                  .value(aStackTraceStr)
+                .endObject()
+              .endArray()
+            .toString();
+        } 
+        catch (JSONException ex) 
+        {
+            log("JSON Exception thrown: " + ex.toString());
+            String aFileDescriptorString = Integer.toString(theFileDescriptor);
+            aLogStr = "[{\"__FileSystemLogEntry__\" : \"true"
+                + "\", \"action\" : \"" + theAction
+                + "\", \"tag\": \"" + aTagStr 
+                + "\", \"fileDescriptor\": \"" + aFileDescriptorString
+                + "\", \"data\": \""+ escapeJson(theData) 
+                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) + "\"}]";
+        }
+
+        log(aLogStr);
+    }
+    
+    private static String getStackTrace()
+    {
+        String aStackTraceStr = "";
+        StackTraceElement[] aStackTraceElementVec = Thread.currentThread().getStackTrace();
+        for (int i = 0 ; i < aStackTraceElementVec.length; i++)
+        {
+            StackTraceElement aStackTraceElement = aStackTraceElementVec[i];
+            String aClassname = aStackTraceElement.getClassName();
+            String aMethodName = aStackTraceElement.getMethodName();
+            int aLineNumber = aStackTraceElement.getLineNumber();
+            aStackTraceStr += aClassname + "," + aMethodName + ":" + aLineNumber + "||";
+        }
+
+        return aStackTraceStr;
+    }
+
+    private static String escapeJson(String theString)
+    {
+        if (theString == null)
+        {
+            return null;
+        }
+        StringBuffer aStringBuf = new StringBuffer();
+
+        for (int i = 0; i < theString.length(); i++)
+        {
+            char aChar = theString.charAt(i);
+            switch(aChar)
+            {
+            case '"':
+            case '\\':
+            case '/':
+                aStringBuf.append("\\").append(aChar);
+                break;
+            case '\b':
+                aStringBuf.append("\\b");
+                break;
+            case '\f':
+                aStringBuf.append("\\f");
+                break;
+            case '\n':
+                aStringBuf.append("\\n");
+                break;
+            case '\r':
+                aStringBuf.append("\\r");
+                break;
+            case '\t':
+                aStringBuf.append("\\t");
+                break;
+            default:
+                if (aChar >= 0x00 && aChar <= 0x1F)
+                {
+                    aStringBuf.append(String.format("\\u%04x", (int)aChar));
+                }
+                else
+                {
+                    aStringBuf.append(aChar);
+                }
+                break;
+            }
+        }
+
+        return aStringBuf.toString(); 
+    }
 }
 

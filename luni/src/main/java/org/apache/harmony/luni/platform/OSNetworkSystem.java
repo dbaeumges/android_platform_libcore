@@ -127,8 +127,9 @@ final class OSNetworkSystem implements INetworkSystem {
     	if (tag != Taint.TAINT_CLEAR) {
     	    String dstr = new String(data);
     	    String addr = (fd.hasName) ? fd.name : "unknown";
-    	    String tstr = "0x" + Integer.toHexString(tag);
-    	    Taint.log("OSNetworkSystem.send("+addr+") received data with tag " + tstr + " data=["+dstr+"]");
+    	    //String tstr = "0x" + Integer.toHexString(tag);
+    	    //Taint.log("OSNetworkSystem.send("+addr+") received data with tag " + tstr + " data=["+dstr+"]");
+            Taint.logNetworkSend("send", tag, addr, dstr);
     	}
     	return sendImpl(fd, data, offset, length, port, inetAddress);
     }
@@ -146,10 +147,12 @@ final class OSNetworkSystem implements INetworkSystem {
 		int tag = Taint.getTaintByte(value);
 		String addr = (fd.hasName) ? fd.name : "unknown";
 		if (tag != Taint.TAINT_CLEAR) {
-			String tstr = "0x" + Integer.toHexString(tag);
-			Taint.log("OSNetworkSystem.sendUrgentData(" + addr
-					+ ") received data with tag " + tstr + " value=[" + value
-					+ "]");
+            String dstr = Byte.toString(value);
+			//String tstr = "0x" + Integer.toHexString(tag);
+			//Taint.log("OSNetworkSystem.sendUrgentData(" + addr
+			//		+ ") received data with tag " + tstr + " value=[" + value
+			//		+ "]");
+            Taint.logNetworkSend("sendUrgendData", tag, addr, dstr);
 		}
 		sendUrgentDataImpl(fd, value);
 	}
@@ -175,10 +178,11 @@ final class OSNetworkSystem implements INetworkSystem {
 		if (tag != Taint.TAINT_CLEAR) {
 			String dstr = new String(data);
 			String addr = (fd.hasName) ? fd.name : "unknown";
-			String tstr = "0x" + Integer.toHexString(tag);
-			Taint.log("OSNetworkSystem.write(" + addr
-					+ ") received data with tag " + tstr + " data=[" + dstr
-					+ "]");
+			//String tstr = "0x" + Integer.toHexString(tag);
+			//Taint.log("OSNetworkSystem.write(" + addr
+			//		+ ") received data with tag " + tstr + " data=[" + dstr
+			//		+ "]");
+            Taint.logNetworkSend("write", tag, addr, dstr);
 		}
 		return writeImpl(fd, data, offset, count);
 	}

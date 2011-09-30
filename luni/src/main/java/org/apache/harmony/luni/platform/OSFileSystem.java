@@ -113,9 +113,10 @@ class OSFileSystem implements IFileSystem {
 		int tag = Taint.getTaintFile(fileDescriptor);
 		if (tag != Taint.TAINT_CLEAR) {
 			String dstr = new String(bytes);
-			String tstr = "0x" + Integer.toHexString(tag);
-			Taint.log("OSFileSystem.read(" + fileDescriptor
-					+ "): reading with tag " + tstr + " data[" + dstr + "]");
+			//String tstr = "0x" + Integer.toHexString(tag);
+			//Taint.log("OSFileSystem.read(" + fileDescriptor
+			//		+ "): reading with tag " + tstr + " data[" + dstr + "]");
+            Taint.logFileSystem("read", tag, fileDescriptor, dstr);
 			Taint.addTaintByteArray(bytes, tag);
 		}
 		return bytesRead;
@@ -131,10 +132,11 @@ class OSFileSystem implements IFileSystem {
 		int tag = Taint.getTaintByteArray(bytes);
 		if (tag != Taint.TAINT_CLEAR) {
 			String dstr = new String(bytes);
-			Taint.logPathFromFd(fileDescriptor);
-			String tstr = "0x" + Integer.toHexString(tag);
-			Taint.log("OSFileSystem.write(" + fileDescriptor
-					+ "): writing with tag " + tstr + " data[" + dstr + "]");
+			//Taint.logPathFromFd(fileDescriptor);
+			//String tstr = "0x" + Integer.toHexString(tag);
+			//Taint.log("OSFileSystem.write(" + fileDescriptor
+			//		+ "): writing with tag " + tstr + " data[" + dstr + "]");
+            Taint.logFileSystem("write", tag, fileDescriptor, dstr);
 			Taint.addTaintFile(fileDescriptor, tag);
 		}
 		return bytesWritten;
