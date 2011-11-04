@@ -121,6 +121,12 @@ public final class FileDescriptor {
     public String name = null;
 
     /**
+     * hack for printing out IP address
+     * @hide
+     */
+    public int port = 0;
+
+    /**
      * hack for setting file taint
      * @hide
      */

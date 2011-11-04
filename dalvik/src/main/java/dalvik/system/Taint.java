@@ -19,6 +19,11 @@
 
 package dalvik.system;
 
+import java.io.FileDescriptor;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 import org.json.JSONException;
 import org.json.JSONStringer;
 
@@ -46,6 +51,8 @@ public final class Taint {
     public static final int TAINT_DEVICE_SN     = 0x00002000;
     public static final int TAINT_ACCOUNT       = 0x00004000;
     public static final int TAINT_HISTORY       = 0x00008000;
+    public static final int TAINT_INCOMING_DATA = 0x00010000;
+    public static final int TAINT_USER_INPUT    = 0x00020000;
 
     /**
      * Updates the target String's taint tag.
@@ -56,6 +63,16 @@ public final class Taint {
      *	    tag to update (bitwise or) onto the object
      */
     native public static void addTaintString(String str, int tag);
+
+    /**
+     * Updates the target CharSequence's taint tag.
+     *
+     * @param cs
+     *	    the target CharSequence
+     * @param tag
+     *	    tag to update (bitwise or) onto the object
+     */
+    native public static void addTaintCharSequence(CharSequence cs, int tag);
     
     /**
      * Updates the target Object array's taint tag.
@@ -239,6 +256,15 @@ public final class Taint {
      * @return the taint tag
      */
     native public static int getTaintString(String str);
+
+    /**
+     * Get the current taint tag from a CharSequence.
+     *
+     * @param cs
+     *	    the target CharSequence
+     * @return the taint tag
+     */
+    native public static int getTaintCharSequence(CharSequence cs);
 
     /**
      * Get the current taint tag from an Object array.
@@ -438,54 +464,109 @@ public final class Taint {
      */
     native public static void logPeerFromFd(int fd);
 
-
-
-    public static void logNetworkSend(String theAction, int theTag, String theDestination, String theData)
+    
+    /**
+     * Logging utility to log cipher usage within android.
+     *
+     * @param theAction
+     *	    the cipher action: init, update, or doFinal
+     * @param theId
+     *      unique id for the cipher action
+     * @param theMode
+     *      decryption (2) or encryption (1)
+     * @param theInput
+     *      input byte stream
+     * @param theOutput
+     *      output byte stream
+     */
+    public static void logCipherUsage(String theAction, int theId, int theMode, byte[] theInput, byte[] theOutput)
     {
         String aLogStr = "";
-        String aTagStr = "0x" + Integer.toHexString(theTag);
-        String aStackTraceStr = getStackTrace();
+        int aTag = Taint.getTaintByteArray(theInput);
+        String aTagStr = "0x" + Integer.toHexString(aTag);
+        String aInputStr = "";
+        if (theInput != null)
+        {
+            aInputStr = new String(theInput);
+        }
+        String aOutputStr = "";
+        if (theOutput != null)
+        {
+            aOutputStr = new String(theOutput);
+        }
+        String aStackTraceStr = "";
+        String aTimestamp = "";
+        if (theAction == "init")
+        {
+            aStackTraceStr = getStackTrace();
+            aTimestamp = getTimestamp();
+        }
         try
         {
             aLogStr = new JSONStringer()
               .array()
                 .object()
-                  .key("__NetworkSendLogEntry__")
+                  .key("__CipherUsageLogEntry__")
                   .value("true")
                   .key("action")
                   .value(theAction)
+                  .key("id")
+                  .value(theId)
+                  .key("mode")
+                  .value(theMode)
                   .key("tag")
                   .value(aTagStr)
-                  .key("destination")
-                  .value(theDestination)
-                  .key("data")
-                  .value(theData)
+                  .key("input")
+                  .value(aInputStr)
+                  .key("output")
+                  .value(aOutputStr)
                   .key("stackTraceStr")
                   .value(aStackTraceStr)
+                  .key("timestamp")
+                  .value(aTimestamp)
                 .endObject()
               .endArray()
             .toString();
         } 
         catch (JSONException ex) 
-        {
+        {            
             log("JSON Exception thrown: " + ex.toString());
-            aLogStr = "[{\"__NetworkSendLogEntry__\" : \"true"
+            String aIdStr = Integer.toString(theId);
+            String aModeStr = Integer.toString(theMode);
+            aLogStr = "[{\"__CipherUsageLogEntry__\" : \"true"
                 + "\", \"action\" : \"" + theAction
+                + "\", \"id\": \"" + aIdStr
+                + "\", \"mode\": \"" + aModeStr
                 + "\", \"tag\": \"" + aTagStr 
-                + "\", \"destination\": \"" + theDestination 
-                + "\", \"data\": " + escapeJson(theData)
-                + ", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) + "\"}]";
+                + "\", \"input\": \"" + escapeJson(aInputStr)
+                + "\", \"output\": \"" + escapeJson(aOutputStr)
+                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) 
+                + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
         }
         log(aLogStr);
     }
 
+    /**
+     * Logging utiltity for OS file system actions
+     *
+     * @param theAction
+     *	    file system action, e.g. read or write
+     * @param theTag
+     *      taint tag value
+     * @param theFileDescriptor
+     *      file descriptor id
+     * @param theData
+     *      data written or read
+     */
     public static void logFileSystem(String theAction, int theTag, int theFileDescriptor, String theData)
     {
+        String aFileDescriptorStr = Integer.toString(theFileDescriptor);
         Taint.logPathFromFd(theFileDescriptor); // Log file descriptor first
-
+        
         String aLogStr = "";
         String aTagStr = "0x" + Integer.toHexString(theTag);
         String aStackTraceStr = getStackTrace();
+        String aTimestamp = ""; //getTimestamp();
 
         try
         {
@@ -504,6 +585,8 @@ public final class Taint {
                   .value(theData)
                   .key("stackTraceStr")
                   .value(aStackTraceStr)
+                  .key("timestamp")
+                  .value(aTimestamp)
                 .endObject()
               .endArray()
             .toString();
@@ -517,10 +600,167 @@ public final class Taint {
                 + "\", \"tag\": \"" + aTagStr 
                 + "\", \"fileDescriptor\": \"" + aFileDescriptorString
                 + "\", \"data\": \""+ escapeJson(theData) 
-                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) + "\"}]";
+                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
+                + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
         }
 
         log(aLogStr);
+    }
+
+    /**
+     * Logging utiltity for OS network actions
+     *
+     * @param theAction
+     *	    network action, e.g. send or recv
+     * @param theTag
+     *      taint tag value
+     * @param theDestination
+     *      destination address
+     * @param thePort
+     *      destination port
+     * @param theData
+     *      data send or received
+     */
+    public static void logNetworkAction(String theAction, int theTag, String theDestination, int thePort, String theData)
+    {
+        String aLogStr = "";
+        String aTagStr = "0x" + Integer.toHexString(theTag);
+        String aStackTraceStr = getStackTrace();
+        String aTimestamp = getTimestamp();
+
+        try
+        {
+            aLogStr = new JSONStringer()
+              .array()
+                .object()
+                  .key("__NetworkSendLogEntry__")
+                  .value("true")
+                  .key("action")
+                  .value(theAction)
+                  .key("tag")
+                  .value(aTagStr)
+                  .key("destination")
+                  .value(theDestination)
+                  .key("port")
+                  .value(thePort)
+                  .key("data")
+                  .value(theData)
+                  .key("stackTraceStr")
+                  .value(aStackTraceStr)
+                  .key("timestamp")
+                  .value(aTimestamp)
+                .endObject()
+              .endArray()
+            .toString();
+        } 
+        catch (JSONException ex) 
+        {            
+            log("JSON Exception thrown: " + ex.toString());
+            String aPortStr = Integer.toString(thePort);
+            aLogStr = "[{\"__NetworkSendLogEntry__\" : \"true"
+                + "\", \"action\" : \"" + theAction
+                + "\", \"tag\": \"" + aTagStr 
+                + "\", \"destination\": \"" + theDestination 
+                + "\", \"port\": \"" + aPortStr 
+                + "\", \"data\": \"" + escapeJson(theData)
+                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
+                + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
+        }
+        log(aLogStr);
+    }
+
+    /**
+     * Logging utiltity for SMS actions
+     *
+     * @param theAction
+     *	    SMS action, e.g. sendSms or sendDataMessage
+     * @param theDestination
+     *      destination phone number
+     * @param theText
+     *      text to be sent
+     */
+    public static void logSmsAction(String theAction, String theDestination, String theScAddress, String theText)
+    {
+        String aLogStr = "";
+        int aTag = Taint.getTaintString(theText);
+        String aTagStr = "0x" + Integer.toHexString(aTag);
+        String aStackTraceStr = getStackTrace();
+        String aTimestamp = getTimestamp();
+
+        try
+        {
+            aLogStr = new JSONStringer()
+              .array()
+                .object()
+                  .key("__SendSmsLogEntry__")
+                  .value("true")
+                  .key("action")
+                  .value(theAction)
+                  .key("tag")
+                  .value(aTagStr)
+                  .key("destination")
+                  .value(theDestination)
+                  .key("scAddress")
+                  .value(theScAddress)
+                  .key("text")
+                  .value(theText)
+                  .key("stackTraceStr")
+                  .value(aStackTraceStr)
+                  .key("timestamp")
+                  .value(aTimestamp)
+                .endObject()
+              .endArray()
+            .toString();
+        } 
+        catch (JSONException ex) 
+        {            
+            log("JSON Exception thrown: " + ex.toString());
+            aLogStr = "[{\"__SendSmsLogEntry__\" : \"true"
+                + "\", \"action\" : \"" + theAction
+                + "\", \"tag\": \"" + aTagStr 
+                + "\", \"destination\": \"" + theDestination 
+                + "\", \"scAddress\": \"" + theScAddress
+                + "\", \"text\": \"" + escapeJson(theText)
+                + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
+                + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
+        }
+        log(aLogStr);
+    }
+
+    /**
+     * Logging utiltity for sending multipart SMS
+     *
+     * @param theDestination
+     *      destination phone number
+     * @param theTextParts
+     *      text parts to be sent
+     */
+    public static void logSendMultipartSms(String theDestination, String theScAddress, ArrayList<String> theTextParts)
+    {
+        String aText = "";
+        for (String aTextPart : theTextParts)
+        {
+            aText += aTextPart;
+        }
+        logSmsAction("sendMultipartSms", theDestination, theScAddress, aText);
+    }
+
+    /**
+     * Logging utiltity for sending data SMS
+     *
+     * @param theDestination
+     *      destination phone number
+     * @param thePort
+     *      destination phone port
+     * @param theData
+     *      data to be sent
+     */
+    public static void logSendDataMessage(String theDestination, String theScAddress, int thePort, byte[] theData)
+    {
+        String aPortStr = Integer.toString(thePort);
+        String aDestination = theDestination + ":" + aPortStr;
+        String aText = new String(theData);
+        logSmsAction("sendDataMessage", aDestination, theScAddress, aText);
     }
     
     private static String getStackTrace()
@@ -537,6 +777,12 @@ public final class Taint {
         }
 
         return aStackTraceStr;
+    }
+
+    private static String getTimestamp()
+    {
+        SimpleDateFormat aDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+        return aDateFormat.format(new Date(System.currentTimeMillis()));
     }
 
     private static String escapeJson(String theString)

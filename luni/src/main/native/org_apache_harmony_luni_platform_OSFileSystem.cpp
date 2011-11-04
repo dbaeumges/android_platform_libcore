@@ -218,8 +218,10 @@ static iovec* initIoVec(JNIEnv* env,
     return vectors.release();
 }
 
-static jlong OSFileSystem_readv(JNIEnv* env, jobject, jint fd,
+// begin WITH_TAINT_TRACKING
+static jlong OSFileSystem_readvImpl(JNIEnv* env, jobject, jint fd,
         jintArray jBuffers, jintArray jOffsets, jintArray jLengths, jint size) {
+// end WITH_TAINT_TRACKING
     UniquePtr<iovec[]> vectors(initIoVec(env, jBuffers, jOffsets, jLengths, size));
     if (vectors.get() == NULL) {
         return -1;
@@ -234,8 +236,10 @@ static jlong OSFileSystem_readv(JNIEnv* env, jobject, jint fd,
     return result;
 }
 
-static jlong OSFileSystem_writev(JNIEnv* env, jobject, jint fd,
+// begin WITH_TAINT_TRACKING
+static jlong OSFileSystem_writevImpl(JNIEnv* env, jobject, jint fd,
         jintArray jBuffers, jintArray jOffsets, jintArray jLengths, jint size) {
+// end WITH_TAINT_TRACKING
     UniquePtr<iovec[]> vectors(initIoVec(env, jBuffers, jOffsets, jLengths, size));
     if (vectors.get() == NULL) {
         return -1;
@@ -267,8 +271,10 @@ static jlong OSFileSystem_transfer(JNIEnv* env, jobject, jint fd, jobject sd,
     return rc;
 }
 
-static jlong OSFileSystem_readDirect(JNIEnv* env, jobject, jint fd,
+// begin WITH_TAINT_TRACKING
+static jlong OSFileSystem_readDirectImpl(JNIEnv* env, jobject, jint fd,
         jint buf, jint offset, jint byteCount) {
+// end WITH_TAINT_TRACKING
     if (byteCount == 0) {
         return 0;
     }
@@ -296,11 +302,15 @@ static jlong OSFileSystem_readImpl(JNIEnv* env, jobject, jint fd,
         return 0;
     }
     jint buf = static_cast<jint>(reinterpret_cast<uintptr_t>(bytes.get()));
-    return OSFileSystem_readDirect(env, NULL, fd, buf, offset, byteCount);
+// begin WITH_TAINT_TRACKING
+    return OSFileSystem_readDirectImpl(env, NULL, fd, buf, offset, byteCount);
+// end WITH_TAINT_TRACKING
 }
 
-static jlong OSFileSystem_writeDirect(JNIEnv* env, jobject, jint fd,
+// begin WITH_TAINT_TRACKING
+static jlong OSFileSystem_writeDirectImpl(JNIEnv* env, jobject, jint fd,
         jint buf, jint offset, jint byteCount) {
+// end WITH_TAINT_TRACKING
     if (byteCount == 0) {
         return 0;
     }
@@ -321,7 +331,9 @@ static jlong OSFileSystem_writeImpl(JNIEnv* env, jobject, jint fd,
         return 0;
     }
     jint buf = static_cast<jint>(reinterpret_cast<uintptr_t>(bytes.get()));
-    return OSFileSystem_writeDirect(env, NULL, fd, buf, offset, byteCount);
+// begin WITH_TAINT_TRACKING
+    return OSFileSystem_writeDirectImpl(env, NULL, fd, buf, offset, byteCount);
+// end WITH_TAINT_TRACKING
 }
 
 static jlong OSFileSystem_seek(JNIEnv* env, jobject, jint fd, jlong offset, jint javaWhence) {
@@ -505,19 +517,19 @@ static JNINativeMethod gMethods[] = {
     NATIVE_METHOD(OSFileSystem, lockImpl, "(IJJIZ)I"),
     NATIVE_METHOD(OSFileSystem, open, "(Ljava/lang/String;I)I"),
     // begin WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSFileSystem, readImpl, "(I[BII)J"),
+    NATIVE_METHOD(OSFileSystem, readImpl, "(I[BII)J"),    
+    NATIVE_METHOD(OSFileSystem, readDirectImpl, "(IIII)J"),    
+    NATIVE_METHOD(OSFileSystem, readvImpl, "(I[I[I[II)J"),
     // end WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSFileSystem, readDirect, "(IIII)J"),
-    NATIVE_METHOD(OSFileSystem, readv, "(I[I[I[II)J"),
     NATIVE_METHOD(OSFileSystem, seek, "(IJI)J"),
     NATIVE_METHOD(OSFileSystem, transfer, "(ILjava/io/FileDescriptor;JJ)J"),
     NATIVE_METHOD(OSFileSystem, truncate, "(IJ)V"),
     NATIVE_METHOD(OSFileSystem, unlockImpl, "(IJJ)V"),
     // begin WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSFileSystem, writeImpl, "(I[BII)J"),
+    NATIVE_METHOD(OSFileSystem, writeImpl, "(I[BII)J"),    
+    NATIVE_METHOD(OSFileSystem, writeDirectImpl, "(IIII)J"),    
+    NATIVE_METHOD(OSFileSystem, writevImpl, "(I[I[I[II)J"),
     // end WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSFileSystem, writeDirect, "(IIII)J"),
-    NATIVE_METHOD(OSFileSystem, writev, "(I[I[I[II)J"),
 };
 int register_org_apache_harmony_luni_platform_OSFileSystem(JNIEnv* env) {
     return jniRegisterNativeMethods(env, "org/apache/harmony/luni/platform/OSFileSystem", gMethods,

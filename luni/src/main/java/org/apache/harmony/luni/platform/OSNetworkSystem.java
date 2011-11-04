@@ -49,10 +49,15 @@ final class OSNetworkSystem implements INetworkSystem {
     // begin WITH_TAINT_TRACKING
     public void connect(FileDescriptor fd, InetAddress inetAddress, int port, int timeout) throws SocketException {
     	String addr = inetAddress.getHostAddress();
-    	if (addr != null) {
+    	if (addr != null) 
+        {
     	    fd.hasName = true;
     	    fd.name = addr;
     	}
+        if (port != 0)
+        {
+            fd.port = port;
+        }
         connectImpl(fd, inetAddress, port, timeout);
     }
     
@@ -63,10 +68,15 @@ final class OSNetworkSystem implements INetworkSystem {
     // begin WITH_TAINT_TRACKING
     public boolean connectNonBlocking(FileDescriptor fd, InetAddress inetAddress, int port) throws IOException {
     	String addr = inetAddress.getHostAddress();
-    	if (addr != null) {
+    	if (addr != null) 
+        {
     	    fd.hasName = true;
     	    fd.name = addr;
     	}
+        if (port != 0)
+        {
+            fd.port = port;
+        }
         return connectNonBlockingImpl(fd, inetAddress, port);
     }
     
@@ -88,18 +98,96 @@ final class OSNetworkSystem implements INetworkSystem {
 
     public native void listen(FileDescriptor fd, int backlog) throws SocketException;
 
-    public native int read(FileDescriptor fd, byte[] data, int offset, int count)
+    // begin WITH_TAINT_TRACKING
+    public int read(FileDescriptor fd, byte[] data, int offset, int count) throws IOException
+    {
+        if (data == null)
+        {
+            throw new NullPointerException();
+        }
+
+        // Taint
+        int bytesRead = readImpl(fd, data, offset, count);
+        int tag = Taint.getTaintByteArray(data);
+        if (tag == Taint.TAINT_CLEAR)
+        {
+            Taint.addTaintByteArray(data, Taint.TAINT_INCOMING_DATA);
+        }
+        else
+        {            
+			Taint.addTaintByteArray(data, tag);
+        }
+
+        // Log
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        String dstr = new String(data);
+        Taint.logNetworkAction("read", tag, addr, fd.port, dstr);
+
+        // Return
+        return bytesRead;
+    }
+
+    public native int readImpl(FileDescriptor fd, byte[] data, int offset, int count)
             throws IOException;
 
-    public native int readDirect(FileDescriptor fd, int address, int count) throws IOException;
+    public int readDirect(FileDescriptor fd, int address, int count) throws IOException
+    {
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        Taint.logNetworkAction("readDirect", Taint.TAINT_CLEAR, addr, fd.port, "");
+        return readDirectImpl(fd, address, count);
+    }
 
-    public native int recv(FileDescriptor fd, DatagramPacket packet,
+    public native int readDirectImpl(FileDescriptor fd, int address, int count) throws IOException;
+
+    public int recv(FileDescriptor fd, DatagramPacket packet,
+            byte[] data, int offset, int length,
+            boolean peek, boolean connected) throws IOException
+    {
+        if (data == null)
+        {
+            throw new NullPointerException();
+        }
+
+        // Taint
+        int bytesRead = recvImpl(fd, packet, data, offset, length, peek, connected);
+        int tag = Taint.getTaintByteArray(data);
+        if (tag == Taint.TAINT_CLEAR)
+        {
+            Taint.addTaintByteArray(data, Taint.TAINT_INCOMING_DATA);
+        }
+        else
+        {            
+			Taint.addTaintByteArray(data, tag);
+        }
+        
+        // Log
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        String dstr = new String(data);
+        Taint.logNetworkAction("recv", tag, addr, fd.port, dstr);
+
+        // Return
+        return bytesRead;
+    }
+
+    public native int recvImpl(FileDescriptor fd, DatagramPacket packet,
             byte[] data, int offset, int length,
             boolean peek, boolean connected) throws IOException;
+    
 
-    public native int recvDirect(FileDescriptor fd, DatagramPacket packet,
+    public int recvDirect(FileDescriptor fd, DatagramPacket packet,
+            int address, int offset, int length,
+            boolean peek, boolean connected) throws IOException
+    {
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        Taint.logNetworkAction("recvDirect", Taint.TAINT_CLEAR, addr, fd.port, "");
+        return recvDirectImpl(fd, packet, address, offset, length, peek, connected);
+    }
+
+    public native int recvDirectImpl(FileDescriptor fd, DatagramPacket packet,
             int address, int offset, int length,
             boolean peek, boolean connected) throws IOException;
+
+    // end WITH_TAINT_TRACKING
 
     public boolean select(FileDescriptor[] readFDs, FileDescriptor[] writeFDs,
             int numReadable, int numWritable, long timeout, int[] flags)
@@ -123,37 +211,42 @@ final class OSNetworkSystem implements INetworkSystem {
     // begin WITH_TAINT_TRACKING
     public int send(FileDescriptor fd, byte[] data, int offset, int length,
             int port, InetAddress inetAddress) throws IOException {
+        // Taint
     	int tag = Taint.getTaintByteArray(data);
-    	if (tag != Taint.TAINT_CLEAR) {
-    	    String dstr = new String(data);
-    	    String addr = (fd.hasName) ? fd.name : "unknown";
-    	    //String tstr = "0x" + Integer.toHexString(tag);
-    	    //Taint.log("OSNetworkSystem.send("+addr+") received data with tag " + tstr + " data=["+dstr+"]");
-            Taint.logNetworkSend("send", tag, addr, dstr);
-    	}
+
+        // Log
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        String dstr = new String(data);
+        Taint.logNetworkAction("send", tag, addr, port, dstr);
+
+        // Return
     	return sendImpl(fd, data, offset, length, port, inetAddress);
     }
     
     public native int sendImpl(FileDescriptor fd, byte[] data, int offset, int length,
             int port, InetAddress inetAddress) throws IOException;
-    // end WITH_TAINT_TRACKING
     
-    // FIXME: TaintDroid currently can't check taint for sendDirect
-    public native int sendDirect(FileDescriptor fd, int address, int offset, int length,
+    public int sendDirect(FileDescriptor fd, int address, int offset, int length,
+            int port, InetAddress inetAddress) throws IOException
+    {
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        Taint.logNetworkAction("sendDirect", Taint.TAINT_CLEAR, addr, port, "");
+        return sendDirectImpl(fd, address, offset, length, port, inetAddress);
+    }
+
+    public native int sendDirectImpl(FileDescriptor fd, int address, int offset, int length,
             int port, InetAddress inetAddress) throws IOException;
 
-	// begin WITH_TAINT_TRACKING
 	public void sendUrgentData(FileDescriptor fd, byte value) {
+        // Taint
 		int tag = Taint.getTaintByte(value);
-		String addr = (fd.hasName) ? fd.name : "unknown";
-		if (tag != Taint.TAINT_CLEAR) {
-            String dstr = Byte.toString(value);
-			//String tstr = "0x" + Integer.toHexString(tag);
-			//Taint.log("OSNetworkSystem.sendUrgentData(" + addr
-			//		+ ") received data with tag " + tstr + " value=[" + value
-			//		+ "]");
-            Taint.logNetworkSend("sendUrgendData", tag, addr, dstr);
-		}
+
+        // Log
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        String dstr = Byte.toString(value);
+        Taint.logNetworkAction("sendUrgentData", tag, addr, fd.port, dstr);
+
+        // Return
 		sendUrgentDataImpl(fd, value);
 	}
 
@@ -172,26 +265,30 @@ final class OSNetworkSystem implements INetworkSystem {
     public native void close(FileDescriptor fd) throws IOException;
 
 	// begin WITH_TAINT_TRACKING
-	public int write(FileDescriptor fd, byte[] data, int offset, int count)
-			throws IOException {
+	public int write(FileDescriptor fd, byte[] data, int offset, int count) throws IOException 
+    {
+        // Taint
 		int tag = Taint.getTaintByteArray(data);
-		if (tag != Taint.TAINT_CLEAR) {
-			String dstr = new String(data);
-			String addr = (fd.hasName) ? fd.name : "unknown";
-			//String tstr = "0x" + Integer.toHexString(tag);
-			//Taint.log("OSNetworkSystem.write(" + addr
-			//		+ ") received data with tag " + tstr + " data=[" + dstr
-			//		+ "]");
-            Taint.logNetworkSend("write", tag, addr, dstr);
-		}
+
+        // Log
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        String dstr = new String(data);
+        Taint.logNetworkAction("write", tag, addr, fd.port, dstr);
+
+        // Return
 		return writeImpl(fd, data, offset, count);
 	}
    
-    public native int writeImpl(FileDescriptor fd, byte[] data, int offset, int count)
+    public native int writeImpl(FileDescriptor fd, byte[] data, int offset, int count) throws IOException;    
+
+    public int writeDirect(FileDescriptor fd, int address, int offset, int count) throws IOException
+    {
+        String addr = (fd.hasName) ? fd.name : "unknown";
+        Taint.logNetworkAction("writeDirect", Taint.TAINT_CLEAR, addr, fd.port, "");
+        return writeDirectImpl(fd, address, offset, count);
+    }
+
+    public native int writeDirectImpl(FileDescriptor fd, int address, int offset, int count)
             throws IOException;
     // end WITH_TAINT_TRACKING
-
-    // FIXME: TaintDroid currently cannot check taint for writeDirect
-    public native int writeDirect(FileDescriptor fd, int address, int offset, int count)
-            throws IOException;
 }

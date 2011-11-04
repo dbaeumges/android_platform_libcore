@@ -91,34 +91,42 @@ class OSFileSystem implements IFileSystem {
      */
     public native long seek(int fd, long offset, int whence) throws IOException;
 
-    // FIXME: TaintDroid currently cannot track taint for readDirect/writeDirect
+    // begin WITH_TAINT_TRACKING
     /*
      * Direct read/write APIs work on addresses.
      */
-    public native long readDirect(int fd, int address, int offset, int length);
+    public long readDirect(int fd, int address, int offset, int length)
+    {
+        Taint.logFileSystem("readDirect", Taint.TAINT_CLEAR, fd, "");
+        return readDirectImpl(fd, address, offset, length);
+    }
 
-    public native long writeDirect(int fd, int address, int offset, int length);
+    public native long readDirectImpl(int fd, int address, int offset, int length);
+
+    public long writeDirect(int fd, int address, int offset, int length)
+    {
+        Taint.logFileSystem("writeDirect", Taint.TAINT_CLEAR, fd, "");
+        return writeDirectImpl(fd, address, offset, length);
+    }
+
+    public native long writeDirectImpl(int fd, int address, int offset, int length);
 
     /*
      * Indirect read/writes work on byte[]'s
-     */
-	// begin WITH_TAINT_TRACKING
+     */	
 	public long read(int fileDescriptor, byte[] bytes, int offset, int length)
 			throws IOException {
 		if (bytes == null) {
 			throw new NullPointerException();
 		}
-		// return readImpl(fileDescriptor, bytes, offset, length);
 		long bytesRead = readImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintFile(fileDescriptor);
-		if (tag != Taint.TAINT_CLEAR) {
-			String dstr = new String(bytes);
-			//String tstr = "0x" + Integer.toHexString(tag);
-			//Taint.log("OSFileSystem.read(" + fileDescriptor
-			//		+ "): reading with tag " + tstr + " data[" + dstr + "]");
+        String dstr = new String(bytes);
+        if (tag != Taint.TAINT_CLEAR)
+        {
             Taint.logFileSystem("read", tag, fileDescriptor, dstr);
-			Taint.addTaintByteArray(bytes, tag);
-		}
+        }
+        Taint.addTaintByteArray(bytes, tag);
 		return bytesRead;
 	}
 
@@ -127,35 +135,44 @@ class OSFileSystem implements IFileSystem {
 		if (bytes == null) {
 			throw new NullPointerException();
 		}
-		// return writeImpl(fileDescriptor, bytes, offset, length);
 		long bytesWritten = writeImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintByteArray(bytes);
-		if (tag != Taint.TAINT_CLEAR) {
-			String dstr = new String(bytes);
-			//Taint.logPathFromFd(fileDescriptor);
-			//String tstr = "0x" + Integer.toHexString(tag);
-			//Taint.log("OSFileSystem.write(" + fileDescriptor
-			//		+ "): writing with tag " + tstr + " data[" + dstr + "]");
+        String dstr = new String(bytes);		
+        if (tag != Taint.TAINT_CLEAR)
+        {
             Taint.logFileSystem("write", tag, fileDescriptor, dstr);
-			Taint.addTaintFile(fileDescriptor, tag);
-		}
+        }
+        Taint.addTaintFile(fileDescriptor, tag);
 		return bytesWritten;
 	}
     
     public native long readImpl(int fd, byte[] bytes, int offset, int length) throws IOException;
 
-    public native long writeImpl(int fd, byte[] bytes, int offset, int length) throws IOException;
-    // end WITH_TAINT_TRACKING
+    public native long writeImpl(int fd, byte[] bytes, int offset, int length) throws IOException;    
 
-    // FIXME: TaintDroid currently cannot track taint for readv/writev
     /*
      * Scatter/gather calls.
      */
-    public native long readv(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
+    public long readv(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
+            throws IOException
+    {
+        Taint.logFileSystem("readv", Taint.TAINT_CLEAR, fd, "");
+        return readvImpl(fd, addresses, offsets, lengths, size);
+    }
+
+    public native long readvImpl(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException;
 
-    public native long writev(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
+    public long writev(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
+            throws IOException
+    {
+        Taint.logFileSystem("writev", Taint.TAINT_CLEAR, fd, "");
+        return writevImpl(fd, addresses, offsets, lengths, size);
+    }
+
+    public native long writevImpl(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException;
+    // end WITH_TAINT_TRACKING
 
     public native void truncate(int fd, long size) throws IOException;
 

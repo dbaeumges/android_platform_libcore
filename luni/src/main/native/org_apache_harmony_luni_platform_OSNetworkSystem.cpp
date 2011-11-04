@@ -441,8 +441,10 @@ static void OSNetworkSystem_socket(JNIEnv* env, jobject, jobject fileDescriptor,
 #endif
 }
 
-static jint OSNetworkSystem_writeDirect(JNIEnv* env, jobject,
+// begin WITH_TAINT_TRACKING
+static jint OSNetworkSystem_writeDirectImpl(JNIEnv* env, jobject,
         jobject fileDescriptor, jint address, jint offset, jint count) {
+// end WITH_TAINT_TRACKING
     if (count <= 0) {
         return 0;
     }
@@ -486,7 +488,9 @@ static jint OSNetworkSystem_writeImpl(JNIEnv* env, jobject,
         return -1;
     }
     jint address = static_cast<jint>(reinterpret_cast<uintptr_t>(bytes.get()));
-    int result = OSNetworkSystem_writeDirect(env, NULL, fileDescriptor, address, offset, count);
+// begin WITH_TAINT_TRACKING
+    int result = OSNetworkSystem_writeDirectImpl(env, NULL, fileDescriptor, address, offset, count);
+// end WITH_TAINT_TRACKING
     return result;
 }
 
@@ -717,7 +721,7 @@ static void OSNetworkSystem_setInetAddress(JNIEnv* env, jobject,
 }
 
 // TODO: can we merge this with recvDirect?
-static jint OSNetworkSystem_readDirect(JNIEnv* env, jobject, jobject fileDescriptor,
+static jint OSNetworkSystem_readDirectImpl(JNIEnv* env, jobject, jobject fileDescriptor,
         jint address, jint count) {
     NetFd fd(env, fileDescriptor);
     if (fd.isClosed()) {
@@ -750,19 +754,23 @@ static jint OSNetworkSystem_readDirect(JNIEnv* env, jobject, jobject fileDescrip
     }
 }
 
-static jint OSNetworkSystem_read(JNIEnv* env, jclass, jobject fileDescriptor,
+// begin WITH_TAINT_TRACKING
+static jint OSNetworkSystem_readImpl(JNIEnv* env, jclass, jobject fileDescriptor,
         jbyteArray byteArray, jint offset, jint count) {
+// end WITH_TAINT_TRACKING
     ScopedByteArrayRW bytes(env, byteArray);
     if (bytes.get() == NULL) {
         return -1;
     }
     jint address = static_cast<jint>(reinterpret_cast<uintptr_t>(bytes.get() + offset));
-    return OSNetworkSystem_readDirect(env, NULL, fileDescriptor, address, count);
+    return OSNetworkSystem_readDirectImpl(env, NULL, fileDescriptor, address, count);
 }
 
+// begin WITH_TAINT_TRACKING
 // TODO: can we merge this with readDirect?
-static jint OSNetworkSystem_recvDirect(JNIEnv* env, jobject, jobject fileDescriptor, jobject packet,
+static jint OSNetworkSystem_recvDirectImpl(JNIEnv* env, jobject, jobject fileDescriptor, jobject packet,
         jint address, jint offset, jint length, jboolean peek, jboolean connected) {
+// end WITH_TAINT_TRACKING
     NetFd fd(env, fileDescriptor);
     if (fd.isClosed()) {
         return 0;
@@ -815,14 +823,16 @@ static jint OSNetworkSystem_recvDirect(JNIEnv* env, jobject, jobject fileDescrip
     return bytesReceived;
 }
 
-static jint OSNetworkSystem_recv(JNIEnv* env, jobject, jobject fd, jobject packet,
+// begin WITH_TAINT_TRACKING
+static jint OSNetworkSystem_recvImpl(JNIEnv* env, jobject, jobject fd, jobject packet,
         jbyteArray javaBytes, jint offset, jint length, jboolean peek, jboolean connected) {
+// end WITH_TAINT_TRACKING
     ScopedByteArrayRW bytes(env, javaBytes);
     if (bytes.get() == NULL) {
         return -1;
     }
     uintptr_t address = reinterpret_cast<uintptr_t>(bytes.get());
-    return OSNetworkSystem_recvDirect(env, NULL, fd, packet, address, offset, length, peek,
+    return OSNetworkSystem_recvDirectImpl(env, NULL, fd, packet, address, offset, length, peek,
             connected);
 }
 
@@ -832,8 +842,9 @@ static jint OSNetworkSystem_recv(JNIEnv* env, jobject, jobject fd, jobject packe
 
 
 
-
-static jint OSNetworkSystem_sendDirect(JNIEnv* env, jobject, jobject fileDescriptor, jint address, jint offset, jint length, jint port, jobject inetAddress) {
+// begin WITH_TAINT_TRACKING
+static jint OSNetworkSystem_sendDirectImpl(JNIEnv* env, jobject, jobject fileDescriptor, jint address, jint offset, jint length, jint port, jobject inetAddress) {
+// end WITH_TAINT_TRACKING
     NetFd fd(env, fileDescriptor);
     if (fd.isClosed()) {
         return -1;
@@ -877,7 +888,7 @@ static jint OSNetworkSystem_sendImpl(JNIEnv* env, jobject, jobject fd,
     if (bytes.get() == NULL) {
         return -1;
     }
-    return OSNetworkSystem_sendDirect(env, NULL, fd,
+    return OSNetworkSystem_sendDirectImpl(env, NULL, fd,
             reinterpret_cast<uintptr_t>(bytes.get()), offset, length, port, inetAddress);
 }
 
@@ -1361,16 +1372,16 @@ static JNINativeMethod gMethods[] = {
     NATIVE_METHOD(OSNetworkSystem, getSocketOption, "(Ljava/io/FileDescriptor;I)Ljava/lang/Object;"),
     NATIVE_METHOD(OSNetworkSystem, isConnected, "(Ljava/io/FileDescriptor;I)Z"),
     NATIVE_METHOD(OSNetworkSystem, listen, "(Ljava/io/FileDescriptor;I)V"),
-    NATIVE_METHOD(OSNetworkSystem, read, "(Ljava/io/FileDescriptor;[BII)I"),
-    NATIVE_METHOD(OSNetworkSystem, readDirect, "(Ljava/io/FileDescriptor;II)I"),
-    NATIVE_METHOD(OSNetworkSystem, recv, "(Ljava/io/FileDescriptor;Ljava/net/DatagramPacket;[BIIZZ)I"),
-    NATIVE_METHOD(OSNetworkSystem, recvDirect, "(Ljava/io/FileDescriptor;Ljava/net/DatagramPacket;IIIZZ)I"),
+// begin WITH_TAINT_TRACKING
+    NATIVE_METHOD(OSNetworkSystem, readImpl, "(Ljava/io/FileDescriptor;[BII)I"),
+    NATIVE_METHOD(OSNetworkSystem, readDirectImpl, "(Ljava/io/FileDescriptor;II)I"),
+    NATIVE_METHOD(OSNetworkSystem, recvImpl, "(Ljava/io/FileDescriptor;Ljava/net/DatagramPacket;[BIIZZ)I"),
+// end WITH_TAINT_TRACKING
+    NATIVE_METHOD(OSNetworkSystem, recvDirectImpl, "(Ljava/io/FileDescriptor;Ljava/net/DatagramPacket;IIIZZ)I"),
     NATIVE_METHOD(OSNetworkSystem, selectImpl, "([Ljava/io/FileDescriptor;[Ljava/io/FileDescriptor;II[IJ)Z"),
     // begin WITH_TAINT_TRACKING
     NATIVE_METHOD(OSNetworkSystem, sendImpl, "(Ljava/io/FileDescriptor;[BIIILjava/net/InetAddress;)I"),
-    // end WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSNetworkSystem, sendDirect, "(Ljava/io/FileDescriptor;IIIILjava/net/InetAddress;)I"),
-    // begin WITH_TAINT_TRACKING
+    NATIVE_METHOD(OSNetworkSystem, sendDirectImpl, "(Ljava/io/FileDescriptor;IIIILjava/net/InetAddress;)I"),
     NATIVE_METHOD(OSNetworkSystem, sendUrgentDataImpl, "(Ljava/io/FileDescriptor;B)V"),
     // end WITH_TAINT_TRACKING
     NATIVE_METHOD(OSNetworkSystem, setInetAddress, "(Ljava/net/InetAddress;[B)V"),
@@ -1379,9 +1390,9 @@ static JNINativeMethod gMethods[] = {
     NATIVE_METHOD(OSNetworkSystem, shutdownOutput, "(Ljava/io/FileDescriptor;)V"),
     NATIVE_METHOD(OSNetworkSystem, socket, "(Ljava/io/FileDescriptor;Z)V"),
     // begin WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSNetworkSystem, writeImpl, "(Ljava/io/FileDescriptor;[BII)I"),
+    NATIVE_METHOD(OSNetworkSystem, writeImpl, "(Ljava/io/FileDescriptor;[BII)I"),    
+    NATIVE_METHOD(OSNetworkSystem, writeDirectImpl, "(Ljava/io/FileDescriptor;III)I"),
     // end WITH_TAINT_TRACKING
-    NATIVE_METHOD(OSNetworkSystem, writeDirect, "(Ljava/io/FileDescriptor;III)I"),
 };
 
 int register_org_apache_harmony_luni_platform_OSNetworkSystem(JNIEnv* env) {
