@@ -27,6 +27,7 @@ import java.io.IOException;
 
 //begin WITH_TAINT_TRACKING
 import dalvik.system.Taint;
+import dalvik.system.TaintLog;
 // end WITH_TAINT_TRACKING
 
 class OSFileSystem implements IFileSystem {
@@ -97,7 +98,7 @@ class OSFileSystem implements IFileSystem {
      */
     public long readDirect(int fd, int address, int offset, int length)
     {
-        Taint.logFileSystem("readDirect", Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, "");
         return readDirectImpl(fd, address, offset, length);
     }
 
@@ -105,7 +106,7 @@ class OSFileSystem implements IFileSystem {
 
     public long writeDirect(int fd, int address, int offset, int length)
     {
-        Taint.logFileSystem("writeDirect", Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, "");
         return writeDirectImpl(fd, address, offset, length);
     }
 
@@ -122,10 +123,7 @@ class OSFileSystem implements IFileSystem {
 		long bytesRead = readImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintFile(fileDescriptor);
         String dstr = new String(bytes);
-        if (tag != Taint.TAINT_CLEAR)
-        {
-            Taint.logFileSystem("read", tag, fileDescriptor, dstr);
-        }
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_ACTION, tag, fileDescriptor, dstr);
         Taint.addTaintByteArray(bytes, tag);
 		return bytesRead;
 	}
@@ -138,10 +136,7 @@ class OSFileSystem implements IFileSystem {
 		long bytesWritten = writeImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintByteArray(bytes);
         String dstr = new String(bytes);		
-        if (tag != Taint.TAINT_CLEAR)
-        {
-            Taint.logFileSystem("write", tag, fileDescriptor, dstr);
-        }
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_ACTION, tag, fileDescriptor, dstr);
         Taint.addTaintFile(fileDescriptor, tag);
 		return bytesWritten;
 	}
@@ -156,7 +151,7 @@ class OSFileSystem implements IFileSystem {
     public long readv(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException
     {
-        Taint.logFileSystem("readv", Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READV_ACTION, Taint.TAINT_CLEAR, fd, "");
         return readvImpl(fd, addresses, offsets, lengths, size);
     }
 
@@ -166,7 +161,7 @@ class OSFileSystem implements IFileSystem {
     public long writev(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException
     {
-        Taint.logFileSystem("writev", Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITEV_ACTION, Taint.TAINT_CLEAR, fd, "");
         return writevImpl(fd, addresses, offsets, lengths, size);
     }
 

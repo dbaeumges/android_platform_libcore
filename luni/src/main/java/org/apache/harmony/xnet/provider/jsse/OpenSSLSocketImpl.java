@@ -41,6 +41,7 @@ import javax.security.auth.x500.X500Principal;
 import org.apache.harmony.security.provider.cert.X509CertImpl;
 // begin WITH_TAINT_TRACKING
 import dalvik.system.Taint;
+import dalvik.system.TaintLog;
 // end WITH_TAINT_TRACKING
 
 /**
@@ -765,8 +766,18 @@ public class OpenSSLSocketImpl
             BlockGuard.getThreadPolicy().onNetwork();
             synchronized (readLock) {
                 checkOpen();
-                return NativeCrypto.SSL_read_byte(sslNativePointer, fd, OpenSSLSocketImpl.this,
-                                                  getSoTimeout());
+                int value = NativeCrypto.SSL_read_byte(sslNativePointer, fd, OpenSSLSocketImpl.this,
+                                                  getSoTimeout());                
+// begin WITH_TAINT_TRACKING
+                String dstr = String.valueOf(value);                
+                int tag = Taint.getTaintInt(value);
+                TaintLog.getInstance().logSSL(TaintLog.SSL_READ_ACTION, tag, fd, dstr);
+                if (tag == Taint.TAINT_CLEAR)
+                {
+                    Taint.addTaintInt(value, Taint.TAINT_INCOMING_DATA);
+                }
+// endn WITH_TAINT_TRACKING
+                return value;
             }
         }
 
@@ -788,8 +799,18 @@ public class OpenSSLSocketImpl
                 if (0 == len) {
                     return 0;
                 }
-                return NativeCrypto.SSL_read(sslNativePointer, fd, OpenSSLSocketImpl.this,
-                                             b, off, len, getSoTimeout());
+                int retval = NativeCrypto.SSL_read(sslNativePointer, fd, OpenSSLSocketImpl.this,
+                                             b, off, len, getSoTimeout());                
+// begin WITH_TAINT_TRACKING
+                String dstr = new String(b);
+                int tag = Taint.getTaintByteArray(b);
+                TaintLog.getInstance().logSSL(TaintLog.SSL_READ_ACTION, tag, fd, dstr);
+                if (tag == Taint.TAINT_CLEAR)
+                {
+                    Taint.addTaintByteArray(b, Taint.TAINT_INCOMING_DATA);
+                }
+// end WITH_TAINT_TRACKING
+                return retval;
             }
         }
     }
@@ -817,17 +838,11 @@ public class OpenSSLSocketImpl
             BlockGuard.getThreadPolicy().onNetwork();
             synchronized (writeLock) {
                 checkOpen();
-                // begin WITH_TAINT_TRACKING
+// begin WITH_TAINT_TRACKING
         		int tag = Taint.getTaintInt(b);
-        		if (tag != Taint.TAINT_CLEAR) {
-        			String dstr = String.valueOf(b);
-        			String addr = (fd.hasName) ? fd.name : "unknown";
-        			String tstr = "0x" + Integer.toHexString(tag);
-        			Taint.log("SSLOutputStream.write(" + addr
-        					+ ") received data with tag " + tstr + " data=[" + dstr
-        					+ "]");
-        		}
-        		// end WITH_TAINT_TRACKING
+                String dstr = String.valueOf(b);
+                TaintLog.getInstance().logSSL(TaintLog.SSL_WRITE_ACTION, tag, fd, dstr);
+// end WITH_TAINT_TRACKING
                 NativeCrypto.SSL_write_byte(sslNativePointer, fd, OpenSSLSocketImpl.this, b);
             }
         }
@@ -850,17 +865,11 @@ public class OpenSSLSocketImpl
                 if (len == 0) {
                     return;
                 }
-                // begin WITH_TAINT_TRACKING
+// begin WITH_TAINT_TRACKING
         		int tag = Taint.getTaintByteArray(b);
-        		if (tag != Taint.TAINT_CLEAR) {
-        			String dstr = new String(b);
-        			String addr = (fd.hasName) ? fd.name : "unknown";
-        			String tstr = "0x" + Integer.toHexString(tag);
-        			Taint.log("SSLOutputStream.write(" + addr
-        					+ ") received data with tag " + tstr + " data=[" + dstr
-        					+ "]");
-        		}
-        		// end WITH_TAINT_TRACKING
+                String dstr = new String(b);
+                TaintLog.getInstance().logSSL(TaintLog.SSL_WRITE_ACTION, tag, fd, dstr);
+// end WITH_TAINT_TRACKING
                 NativeCrypto.SSL_write(sslNativePointer, fd, OpenSSLSocketImpl.this, b, start, len);
             }
         }

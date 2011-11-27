@@ -37,7 +37,7 @@ import org.apache.harmony.crypto.internal.NullCipherSpi;
 import org.apache.harmony.security.fortress.Engine;
 
 // begin WITH_TAINT_TRACKING
-import dalvik.system.Taint;
+import dalvik.system.TaintLog;
 import java.util.Random;
 // end WITH_TAINT_TRACKING
 
@@ -524,7 +524,7 @@ public class Cipher {
         spiImpl.engineInit(opmode, key, random);
         mode = opmode;
 // begin WITH_TAINT_TRACKING
-        Taint.logCipherUsage("init", this.taintLogId, this.mode, null, null);
+        TaintLog.getInstance().logCipherUsage("init", this.taintLogId, this.mode, null, null);
 // end WITH_TAINT_TRACKING
     }
 
@@ -623,7 +623,7 @@ public class Cipher {
         spiImpl.engineInit(opmode, key, params, random);
         mode = opmode;
 // begin WITH_TAINT_TRACKING
-        Taint.logCipherUsage("init", this.taintLogId, this.mode, null, null);
+        TaintLog.getInstance().logCipherUsage("init", this.taintLogId, this.mode, null, null);
 // end WITH_TAINT_TRACKING
     }
 
@@ -717,7 +717,7 @@ public class Cipher {
         spiImpl.engineInit(opmode, key, params, random);
         mode = opmode;
 // begin WITH_TAINT_TRACKING
-        Taint.logCipherUsage("init", this.taintLogId, this.mode, null, null);
+        TaintLog.getInstance().logCipherUsage("init", this.taintLogId, this.mode, null, null);
 // end WITH_TAINT_TRACKING
     }
 
@@ -837,7 +837,7 @@ public class Cipher {
         spiImpl.engineInit(opmode, certificate.getPublicKey(), random);
         mode = opmode;
 // begin WITH_TAINT_TRACKING
-        Taint.logCipherUsage("init", this.taintLogId, this.mode, null, null);
+        TaintLog.getInstance().logCipherUsage("init", this.taintLogId, this.mode, null, null);
 // end WITH_TAINT_TRACKING
     }
 
@@ -867,7 +867,7 @@ public class Cipher {
         }
 // begin WITH_TAINT_TRACKING
         byte[] aOutput = spiImpl.engineUpdate(input, 0, input.length);
-        Taint.logCipherUsage("update", this.taintLogId, this.mode, input, aOutput);
+        TaintLog.getInstance().logCipherUsage("update", this.taintLogId, this.mode, input, aOutput);
         return aOutput;
 // end WITH_TAINT_TRACKING
     }
@@ -911,7 +911,7 @@ public class Cipher {
         byte[] aOutput = spiImpl.engineUpdate(input, inputOffset, inputLen);
         byte[] aInput = new byte[inputLen];
         System.arraycopy(input, inputOffset, aInput, 0, inputLen);
-        Taint.logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
         return aOutput;
 // end WITH_TAINT_TRACKING
     }
@@ -1007,7 +1007,7 @@ public class Cipher {
         byte[] aOutput = new byte[aRetval];
         System.arraycopy(input, inputOffset, aInput, 0, inputLen);
         System.arraycopy(output, outputOffset, aOutput, 0, aRetval);
-        Taint.logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
         return aRetval;
 // end WITH_TAINT_TRACKING
     }
@@ -1050,7 +1050,7 @@ public class Cipher {
         byte[] aOutput = new byte[aRetval];
         input.get(aInput, 0, aInput.length);
         output.get(aOutput, 0, aOutput.length);
-        Taint.logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("update", this.taintLogId, this.mode, aInput, aOutput);
         return aRetval;
 // end WITH_TAINT_TRACKING
     }
@@ -1078,7 +1078,7 @@ public class Cipher {
         }
 // begin WITH_TAINT_TRACKING
         byte[] aOutput = spiImpl.engineDoFinal(null, 0, 0);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, null, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, null, aOutput);
         return aOutput;
 // end WITH_TAINT_TRACKING
     }
@@ -1120,7 +1120,7 @@ public class Cipher {
         int aRetval = spiImpl.engineDoFinal(null, 0, 0, output, outputOffset);
         byte[] aOutput = new byte[aRetval];
         System.arraycopy(output, outputOffset, aOutput, 0, aRetval);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, null, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, null, aOutput);
         return aRetval;
 // end WITH_TAINT_TRACKING
     }
@@ -1150,7 +1150,7 @@ public class Cipher {
         }
 // begin WITH_TAINT_TRACKING
         byte[] aOutput = spiImpl.engineDoFinal(input, 0, input.length);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, input, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, input, aOutput);
         return aOutput;
 // end WITH_TAINT_TRACKING
     }
@@ -1193,7 +1193,7 @@ public class Cipher {
         byte[] aOutput = spiImpl.engineDoFinal(input, inputOffset, inputLen);
         byte[] aInput = new byte[inputLen];
         System.arraycopy(input, inputOffset, aInput, 0, inputLen);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
         return aOutput;
 // end WITH_TAINT_TRACKING
     }
@@ -1282,7 +1282,7 @@ public class Cipher {
         byte[] aOutput = new byte[aRetval];
         System.arraycopy(input, inputOffset, aInput, 0, inputLen);
         System.arraycopy(output, outputOffset, aOutput, 0, aRetval);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
         return aRetval;
 // end WITH_TAINT_TRACKING
     }
@@ -1329,7 +1329,7 @@ public class Cipher {
         byte[] aOutput = new byte[aRetval];
         input.get(aInput, 0, aInput.length);
         output.get(aOutput, 0, aOutput.length);
-        Taint.logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
+        TaintLog.getInstance().logCipherUsage("doFinal", this.taintLogId, this.mode, aInput, aOutput);
         return aRetval;
 // end WITH_TAINT_TRACKING
     }
