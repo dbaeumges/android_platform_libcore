@@ -53,6 +53,7 @@ public final class Taint {
     public static final int TAINT_HISTORY       = 0x00008000;
     public static final int TAINT_INCOMING_DATA = 0x00010000;
     public static final int TAINT_USER_INPUT    = 0x00020000;    
+    public static final int TAINT_MEDIA         = 0x00040000;
 
     /**
      * Updates the target String's taint tag.
@@ -211,6 +212,18 @@ public final class Taint {
      * @return val with the added taint tag
      */
     native public static int addTaintInt(int val, int tag);
+
+    /**
+     * Add taint to a primiative short value. Only the return value has the
+     * updated taint tag.
+     *
+     * @param val
+     *	    the input value
+     * @param tag
+     *	    tag to add (bitwise or) onto the input value
+     * @return val with the added taint tag
+     */
+    native public static short addTaintShort(short val, int tag);
 
     /**
      * Add taint to a primiative long value. Only the return value has the

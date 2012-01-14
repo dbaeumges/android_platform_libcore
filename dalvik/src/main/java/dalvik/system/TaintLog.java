@@ -36,6 +36,7 @@ public final class TaintLog {
 
     public static final int CIPHER_ACTION            = 0x00800000;
     public static final int ERROR_ACTION             = 0x01000000;
+    public static final int CALL_ACTION              = 0x02000000;
 
     private static String GLOBAL_ACTIVE_KEY          = "tdroid.global.active";
     private static String GLOBAL_SKIP_LOOKUP_KEY     = "tdroid.global.skiplookup";
@@ -194,6 +195,49 @@ public final class TaintLog {
 
     
     /**
+     * Logging utility to log outgoing call within android.
+     *
+     * @param theDialString
+     *	    the number to dial
+     */
+    public void logCallAction(String theDialString)
+    {
+        readProperties();
+        if (itsGlobalActiveFlag && ((CALL_ACTION & itsGlobalActionMask) == CALL_ACTION))
+        {
+            String aStackTraceStr = getStackTrace();
+            String aTimestamp = getTimestamp();
+            String aLogStr = ""; 
+            try
+            {
+                aLogStr = new JSONStringer()
+                    .array()
+                    .object()
+                    .key("__CallActionLogEntry__")
+                    .value("true")
+                    .key("dialString")
+                    .value(theDialString)
+                    .key("stackTraceStr")
+                    .value(aStackTraceStr)
+                    .key("timestamp")
+                    .value(aTimestamp)
+                    .endObject()
+                    .endArray()
+                    .toString();
+            }
+            catch (JSONException ex) 
+            {            
+                log("JSON Exception thrown: " + ex.toString());
+                aLogStr = "[{\"__CallActionLogEntry__\" : \"true"
+                    + "\", \"dialString\": \"" + escapeJson(theDialString)
+                    + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) 
+                    + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
+            }
+            log(aLogStr);
+        }
+    }
+
+    /**
      * Logging utility to log cipher usage within android.
      *
      * @param theAction
@@ -279,7 +323,7 @@ public final class TaintLog {
                 log(aLogStr);
             }
         }
-    }
+    }    
 
     public void logError(String theMessage)
     {
@@ -344,8 +388,7 @@ public final class TaintLog {
                 theAction == 0x00000002 ||
                 theAction == 0x00000004)
             {
-                aTaintMask = itsFSReadTaintMask;
-                
+                aTaintMask = itsFSReadTaintMask;                
             }
             else
             {
@@ -549,11 +592,15 @@ public final class TaintLog {
         readProperties();
         if (itsGlobalActiveFlag && ((theAction & itsGlobalActionMask) == theAction))
         {
-            int aTag = Taint.getTaintString(theText);
-            if ((0xFFFFFFFF == itsGlobalTaintMask) || (aTag != 0 && (aTag & itsGlobalTaintMask) == aTag))
+            int aTextTag = Taint.getTaintString(theText);
+            int aDestinationTag = Taint.getTaintString(theDestination);
+            if ((0xFFFFFFFF == itsGlobalTaintMask) || 
+                (aTextTag != 0 && (aTextTag & itsGlobalTaintMask) == aTextTag) ||
+                (aDestinationTag != 0 && (aDestinationTag & itsGlobalTaintMask) == aDestinationTag))
             {
                 String aLogStr = "";        
-                String aTagStr = "0x" + Integer.toHexString(aTag);
+                String aTextTagStr = "0x" + Integer.toHexString(aTextTag);
+                String aDestinationTagStr = "0x" + Integer.toHexString(aDestinationTag);
                 String aStackTraceStr = getStackTrace();
                 String aTimestamp = getTimestamp();
                 
@@ -567,9 +614,11 @@ public final class TaintLog {
                         .key("action")
                         .value(theAction)
                         .key("tag")
-                        .value(aTagStr)
+                        .value(aTextTagStr)
                         .key("destination")
                         .value(theDestination)
+                        .key("destinationTag")
+                        .value(aDestinationTagStr)
                         .key("scAddress")
                         .value(theScAddress)
                         .key("text")
@@ -588,8 +637,9 @@ public final class TaintLog {
                     String aActionStr = Integer.toString(theAction);
                     aLogStr = "[{\"__SendSmsLogEntry__\" : \"true"
                         + "\", \"action\" : " + aActionStr
-                        + ", \"tag\": \"" + aTagStr 
+                        + ", \"tag\": \"" + aTextTagStr 
                         + "\", \"destination\": \"" + theDestination 
+                        + "\", \"destinationTag\": \"" + aDestinationTagStr
                         + "\", \"scAddress\": \"" + theScAddress
                         + "\", \"text\": \"" + escapeJson(theText)
                         + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
