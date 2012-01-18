@@ -26,6 +26,7 @@ import java.net.SocketImpl;
 // begin WITH_TAINT_TRACKING
 import dalvik.system.Taint;
 import dalvik.system.TaintLog;
+import java.util.Random;
 // end WITH_TAINT_TRACKING
 
 /**
@@ -34,6 +35,10 @@ import dalvik.system.TaintLog;
  */
 final class OSNetworkSystem implements INetworkSystem {
     private static final OSNetworkSystem singleton = new OSNetworkSystem();
+
+    // begin WITH_TAINT_TRACKING
+    private int taintLogId;
+    // end WITH_TAINT_TRACKING
 
     public static OSNetworkSystem getOSNetworkSystem() {
         return singleton;
@@ -60,6 +65,11 @@ final class OSNetworkSystem implements INetworkSystem {
             fd.port = port;
         }
         connectImpl(fd, inetAddress, port, timeout);
+
+        // begin WITH_TAINT_TRACKING
+        Random aRandomGen = new Random();
+        this.taintLogId = aRandomGen.nextInt();   
+        // end WITH_TAINT_TRACKING
     }
     
     public native void connectImpl(FileDescriptor fd, InetAddress inetAddress, int port, int timeout)
@@ -78,6 +88,12 @@ final class OSNetworkSystem implements INetworkSystem {
         {
             fd.port = port;
         }
+
+        // begin WITH_TAINT_TRACKING
+        Random aRandomGen = new Random();
+        this.taintLogId = aRandomGen.nextInt();   
+        // end WITH_TAINT_TRACKING
+
         return connectNonBlockingImpl(fd, inetAddress, port);
     }
     
@@ -113,7 +129,7 @@ final class OSNetworkSystem implements INetworkSystem {
         String addr = (fd.hasName) ? fd.name : "unknown";
         String dstr = new String(data);        
         int tag = Taint.getTaintByteArray(data);
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_READ_ACTION, tag, addr, fd.port, dstr);
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_READ_ACTION, tag, addr, fd.port, taintLogId, dstr);
         if (tag == Taint.TAINT_CLEAR)
         {
             Taint.addTaintByteArray(data, Taint.TAINT_INCOMING_DATA);
@@ -129,7 +145,7 @@ final class OSNetworkSystem implements INetworkSystem {
     public int readDirect(FileDescriptor fd, int address, int count) throws IOException
     {
         String addr = (fd.hasName) ? fd.name : "unknown";
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_READ_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, "");
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_READ_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, taintLogId, "");
         return readDirectImpl(fd, address, count);
     }
 
@@ -149,7 +165,7 @@ final class OSNetworkSystem implements INetworkSystem {
         int tag = Taint.getTaintByteArray(data);
         String addr = (fd.hasName) ? fd.name : "unknown";
         String dstr = new String(data);
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_RECV_ACTION, tag, addr, fd.port, dstr);
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_RECV_ACTION, tag, addr, fd.port, taintLogId, dstr);
         if (tag == Taint.TAINT_CLEAR)
         {
             Taint.addTaintByteArray(data, Taint.TAINT_INCOMING_DATA);
@@ -169,7 +185,7 @@ final class OSNetworkSystem implements INetworkSystem {
             boolean peek, boolean connected) throws IOException
     {
         String addr = (fd.hasName) ? fd.name : "unknown";
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_RECV_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, "");
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_RECV_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, taintLogId, "");
         return recvDirectImpl(fd, packet, address, offset, length, peek, connected);
     }
 
@@ -207,7 +223,7 @@ final class OSNetworkSystem implements INetworkSystem {
         // Log
         String addr = (fd.hasName) ? fd.name : "unknown";
         String dstr = new String(data);
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_ACTION, tag, addr, port, dstr);
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_ACTION, tag, addr, port, taintLogId, dstr);
 
         // Return
     	return sendImpl(fd, data, offset, length, port, inetAddress);
@@ -220,7 +236,7 @@ final class OSNetworkSystem implements INetworkSystem {
             int port, InetAddress inetAddress) throws IOException
     {
         String addr = (fd.hasName) ? fd.name : "unknown";
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, port, "");
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, port, taintLogId, "");
         return sendDirectImpl(fd, address, offset, length, port, inetAddress);
     }
 
@@ -234,7 +250,7 @@ final class OSNetworkSystem implements INetworkSystem {
         // Log
         String addr = (fd.hasName) ? fd.name : "unknown";
         String dstr = Byte.toString(value);
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_URGENT_ACTION, tag, addr, fd.port, dstr);
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_SEND_URGENT_ACTION, tag, addr, fd.port, taintLogId, dstr);
 
         // Return
 		sendUrgentDataImpl(fd, value);
@@ -263,7 +279,7 @@ final class OSNetworkSystem implements INetworkSystem {
         // Log
         String addr = (fd.hasName) ? fd.name : "unknown";
         String dstr = new String(data);
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_WRITE_ACTION, tag, addr, fd.port, dstr);
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_WRITE_ACTION, tag, addr, fd.port, taintLogId, dstr);
 
         // Return
 		return writeImpl(fd, data, offset, count);
@@ -274,7 +290,7 @@ final class OSNetworkSystem implements INetworkSystem {
     public int writeDirect(FileDescriptor fd, int address, int offset, int count) throws IOException
     {
         String addr = (fd.hasName) ? fd.name : "unknown";
-        TaintLog.getInstance().logNetworkAction(TaintLog.NET_WRITE_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, "");
+        TaintLog.getInstance().logNetworkAction(TaintLog.NET_WRITE_DIRECT_ACTION, Taint.TAINT_CLEAR, addr, fd.port, taintLogId, "");
         return writeDirectImpl(fd, address, offset, count);
     }
 

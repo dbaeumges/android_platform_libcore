@@ -390,7 +390,7 @@ static jint OSFileSystem_truncate(JNIEnv* env, jobject, jint fd, jlong length) {
     return rc;
 }
 
-static jint OSFileSystem_open(JNIEnv* env, jobject, jstring javaPath, jint jflags) {
+static jint OSFileSystem_openImpl(JNIEnv* env, jobject, jstring javaPath, jint jflags) {
     int flags = 0;
     int mode = 0;
 
@@ -514,9 +514,9 @@ static JNINativeMethod gMethods[] = {
     NATIVE_METHOD(OSFileSystem, getAllocGranularity, "()I"),
     NATIVE_METHOD(OSFileSystem, ioctlAvailable, "(Ljava/io/FileDescriptor;)I"),
     NATIVE_METHOD(OSFileSystem, length, "(I)J"),
-    NATIVE_METHOD(OSFileSystem, lockImpl, "(IJJIZ)I"),
-    NATIVE_METHOD(OSFileSystem, open, "(Ljava/lang/String;I)I"),
+    NATIVE_METHOD(OSFileSystem, lockImpl, "(IJJIZ)I"),    
     // begin WITH_TAINT_TRACKING
+    NATIVE_METHOD(OSFileSystem, openImpl, "(Ljava/lang/String;I)I"),
     NATIVE_METHOD(OSFileSystem, readImpl, "(I[BII)J"),    
     NATIVE_METHOD(OSFileSystem, readDirectImpl, "(IIII)J"),    
     NATIVE_METHOD(OSFileSystem, readvImpl, "(I[I[I[II)J"),

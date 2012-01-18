@@ -28,11 +28,16 @@ import java.io.IOException;
 //begin WITH_TAINT_TRACKING
 import dalvik.system.Taint;
 import dalvik.system.TaintLog;
+import java.util.Random;
 // end WITH_TAINT_TRACKING
 
 class OSFileSystem implements IFileSystem {
 
     private static final OSFileSystem singleton = new OSFileSystem();
+
+    // begin WITH_TAINT_TRACKING
+    private int taintLogId;
+    // end WITH_TAINT_TRACKING
 
     public static OSFileSystem getOSFileSystem() {
         return singleton;
@@ -98,7 +103,7 @@ class OSFileSystem implements IFileSystem {
      */
     public long readDirect(int fd, int address, int offset, int length)
     {
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, taintLogId, "");
         return readDirectImpl(fd, address, offset, length);
     }
 
@@ -106,7 +111,7 @@ class OSFileSystem implements IFileSystem {
 
     public long writeDirect(int fd, int address, int offset, int length)
     {
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_DIRECT_ACTION, Taint.TAINT_CLEAR, fd, taintLogId, "");
         return writeDirectImpl(fd, address, offset, length);
     }
 
@@ -123,7 +128,7 @@ class OSFileSystem implements IFileSystem {
 		long bytesRead = readImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintFile(fileDescriptor);
         String dstr = new String(bytes);
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_ACTION, tag, fileDescriptor, dstr);
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READ_ACTION, tag, fileDescriptor, taintLogId, dstr);
         Taint.addTaintByteArray(bytes, tag);
 		return bytesRead;
 	}
@@ -136,7 +141,7 @@ class OSFileSystem implements IFileSystem {
 		long bytesWritten = writeImpl(fileDescriptor, bytes, offset, length);
 		int tag = Taint.getTaintByteArray(bytes);
         String dstr = new String(bytes);		
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_ACTION, tag, fileDescriptor, dstr);
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITE_ACTION, tag, fileDescriptor, taintLogId, dstr);
         Taint.addTaintFile(fileDescriptor, tag);
 		return bytesWritten;
 	}
@@ -151,7 +156,7 @@ class OSFileSystem implements IFileSystem {
     public long readv(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException
     {
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_READV_ACTION, Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_READV_ACTION, Taint.TAINT_CLEAR, fd, taintLogId, "");
         return readvImpl(fd, addresses, offsets, lengths, size);
     }
 
@@ -161,7 +166,7 @@ class OSFileSystem implements IFileSystem {
     public long writev(int fd, int[] addresses, int[] offsets, int[] lengths, int size)
             throws IOException
     {
-        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITEV_ACTION, Taint.TAINT_CLEAR, fd, "");
+        TaintLog.getInstance().logFileSystem(TaintLog.FS_WRITEV_ACTION, Taint.TAINT_CLEAR, fd, taintLogId, "");
         return writevImpl(fd, addresses, offsets, lengths, size);
     }
 
@@ -171,7 +176,16 @@ class OSFileSystem implements IFileSystem {
 
     public native void truncate(int fd, long size) throws IOException;
 
-    public native int open(String path, int mode) throws FileNotFoundException;
+    // begin WITH_TAINT_TRACKING
+    public int open(String path, int mode) throws FileNotFoundException
+    {
+        Random aRandomGen = new Random();
+        this.taintLogId = aRandomGen.nextInt();  
+        return openImpl(path, mode);
+    }
+
+    public native int openImpl(String path, int mode) throws FileNotFoundException;
+    // end WITH_TAINT_TRACKING
 
     public native long transfer(int fd, FileDescriptor sd, long offset, long count)
             throws IOException;

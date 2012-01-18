@@ -377,7 +377,7 @@ public final class TaintLog {
      * @param theData
      *      hdata written or read
      */
-    public void logFileSystem(int theAction, int theTag, int theFileDescriptor, String theData)
+    public void logFileSystem(int theAction, int theTag, int theFileDescriptor, int theId, String theData)
     {
         readProperties();
         if (itsGlobalActiveFlag && 
@@ -422,8 +422,10 @@ public final class TaintLog {
                         .value(theFileDescriptor)
                         .key("filePath")
                         .value(aPath)
+                        .key("taintLogId")
+                        .value(theId)
                         .key("data")
-                        .value(theData)
+                        .value(theData)                        
                         .key("stackTraceStr")
                         .value(aStackTraceStr)
                         .key("timestamp")
@@ -437,12 +439,14 @@ public final class TaintLog {
                     log("JSON Exception thrown: " + ex.toString());
                     String aActionStr = Integer.toString(theAction);
                     String aFileDescriptorString = Integer.toString(theFileDescriptor);                
+                    String aIdString = Integer.toString(theId);
                     aLogStr = "[{\"__FileSystemLogEntry__\" : \"true"
                         + "\", \"action\" : " + aActionStr
                         + ", \"tag\": \"" + aTagStr 
                         + "\", \"fileDescriptor\": " + aFileDescriptorString
-                        + ", \"filePath\": \""+ escapeJson(theData) 
-                        + "\", \"data\": \""+ escapeJson(aPath) 
+                        + ", \"filePath\": \"" + escapeJson(theData) 
+                        + "\", \"taintLogId\": " + aIdString 
+                        + ", \"data\": \"" + escapeJson(aPath)                         
                         + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
                         + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
                 }
@@ -466,7 +470,7 @@ public final class TaintLog {
      * @param theData
      *      data send or received
      */
-    public void logNetworkAction(int theAction, int theTag, String theDestination, int thePort, String theData)
+    public void logNetworkAction(int theAction, int theTag, String theDestination, int thePort, int theId, String theData)
     {
         readProperties();
         if (itsGlobalActiveFlag && 
@@ -493,6 +497,8 @@ public final class TaintLog {
                     .value(theDestination)
                     .key("port")
                     .value(thePort)
+                    .key("taintLogId")
+                    .value(theId)
                     .key("data")
                     .value(theData)
                     .key("stackTraceStr")
@@ -508,11 +514,13 @@ public final class TaintLog {
                 log("JSON Exception thrown: " + ex.toString());
                 String aActionStr = Integer.toString(theAction);
                 String aPortStr = Integer.toString(thePort);
+                String aIdString = Integer.toString(theId);
                 aLogStr = "[{\"__NetworkSendLogEntry__\" : \"true"
                     + "\", \"action : " + aActionStr
                     + ", \"tag\": \"" + aTagStr 
                     + "\", \"destination\": \"" + theDestination 
                     + "\", \"port\": " + aPortStr 
+                    + "\", \"taintLogId\": " + aIdString 
                     + ", \"data\": \"" + escapeJson(theData)
                     + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr)
                     + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
