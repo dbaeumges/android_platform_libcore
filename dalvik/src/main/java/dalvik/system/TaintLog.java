@@ -205,35 +205,44 @@ public final class TaintLog {
         readProperties();
         if (itsGlobalActiveFlag && ((CALL_ACTION & itsGlobalActionMask) == CALL_ACTION))
         {
-            String aStackTraceStr = getStackTrace();
-            String aTimestamp = getTimestamp();
-            String aLogStr = ""; 
-            try
+            int aTag = Taint.getTaintString(theDialString);
+            if ((0xFFFFFFFF == itsGlobalTaintMask) || 
+                (aTag != 0 && (aTag & itsGlobalTaintMask) == aTag))
             {
-                aLogStr = new JSONStringer()
-                    .array()
-                    .object()
-                    .key("__CallActionLogEntry__")
-                    .value("true")
-                    .key("dialString")
-                    .value(theDialString)
-                    .key("stackTraceStr")
-                    .value(aStackTraceStr)
-                    .key("timestamp")
-                    .value(aTimestamp)
-                    .endObject()
-                    .endArray()
-                    .toString();
+                String aTagStr = "0x" + Integer.toHexString(aTag);
+                String aStackTraceStr = getStackTrace();
+                String aTimestamp = getTimestamp();
+                String aLogStr = ""; 
+                try
+                    {
+                        aLogStr = new JSONStringer()
+                            .array()
+                            .object()
+                            .key("__CallActionLogEntry__")
+                            .value("true")
+                            .key("dialString")
+                            .value(theDialString)
+                            .key("tag")
+                            .value(aTagStr)
+                            .key("stackTraceStr")
+                            .value(aStackTraceStr)
+                            .key("timestamp")
+                            .value(aTimestamp)
+                            .endObject()
+                            .endArray()
+                            .toString();
+                    }
+                catch (JSONException ex) 
+                    {            
+                        log("JSON Exception thrown: " + ex.toString());
+                        aLogStr = "[{\"__CallActionLogEntry__\" : \"true"
+                            + "\", \"dialString\": \"" + escapeJson(theDialString)
+                            + "\", \"tag\": \"" + aTagStr
+                            + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) 
+                            + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
+                    }
+                log(aLogStr);
             }
-            catch (JSONException ex) 
-            {            
-                log("JSON Exception thrown: " + ex.toString());
-                aLogStr = "[{\"__CallActionLogEntry__\" : \"true"
-                    + "\", \"dialString\": \"" + escapeJson(theDialString)
-                    + "\", \"stackTraceStr\": \"" + escapeJson(aStackTraceStr) 
-                    + "\", \"timestamp\": \"" + aTimestamp + "\"}]";
-            }
-            log(aLogStr);
         }
     }
 
